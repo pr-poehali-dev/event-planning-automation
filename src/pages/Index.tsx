@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -87,6 +89,17 @@ const Index = () => {
   const [events, setEvents] = useState<Event[]>(mockEvents);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<Event | null>(null);
+  const [deletingEventId, setDeletingEventId] = useState<string | null>(null);
+  const [filterType, setFilterType] = useState<EventType | 'all'>('all');
+  const [formData, setFormData] = useState({
+    title: '',
+    type: 'meeting' as EventType,
+    time: '',
+    location: '',
+    description: '',
+    notification: '30min'
+  });
   const { toast } = useToast();
 
   const getEventTypeColor = (type: EventType) => {
@@ -112,16 +125,90 @@ const Index = () => {
   };
 
   const handleCreateEvent = () => {
-    toast({
-      title: 'Событие создано!',
-      description: 'Умное уведомление настроено автоматически',
-    });
+    if (!formData.title || !formData.time) {
+      toast({
+        title: 'Ошибка',
+        description: 'Заполните название и время события',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    if (editingEvent) {
+      setEvents(events.map(e => e.id === editingEvent.id ? {
+        ...editingEvent,
+        ...formData,
+        date: selectedDate || new Date()
+      } : e));
+      toast({
+        title: 'Событие обновлено!',
+        description: 'Изменения сохранены',
+      });
+    } else {
+      const newEvent: Event = {
+        id: Date.now().toString(),
+        ...formData,
+        date: selectedDate || new Date()
+      };
+      setEvents([...events, newEvent]);
+      toast({
+        title: 'Событие создано!',
+        description: 'Умное уведомление настроено автоматически',
+      });
+    }
+    
     setIsDialogOpen(false);
+    setEditingEvent(null);
+    setFormData({
+      title: '',
+      type: 'meeting',
+      time: '',
+      location: '',
+      description: '',
+      notification: '30min'
+    });
+  };
+
+  const handleEditEvent = (event: Event) => {
+    setEditingEvent(event);
+    setFormData({
+      title: event.title,
+      type: event.type,
+      time: event.time,
+      location: event.location,
+      description: event.description,
+      notification: event.notification
+    });
+    setSelectedDate(event.date);
+    setIsDialogOpen(true);
+  };
+
+  const handleDeleteEvent = (id: string) => {
+    setEvents(events.filter(e => e.id !== id));
+    setDeletingEventId(null);
+    toast({
+      title: 'Событие удалено',
+      description: 'Событие успешно удалено из календаря',
+    });
+  };
+
+  const handleOpenDialog = () => {
+    setEditingEvent(null);
+    setFormData({
+      title: '',
+      type: 'meeting',
+      time: '',
+      location: '',
+      description: '',
+      notification: '30min'
+    });
+    setIsDialogOpen(true);
   };
 
   const filteredEvents = events.filter(event => {
-    if (!selectedDate) return true;
-    return event.date.toDateString() === selectedDate.toDateString();
+    const dateMatch = !selectedDate || event.date.toDateString() === selectedDate.toDateString();
+    const typeMatch = filterType === 'all' || event.type === filterType;
+    return dateMatch && typeMatch;
   });
 
   return (
@@ -137,24 +224,29 @@ const Index = () => {
             </div>
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="gap-2 rounded-xl">
+                <Button className="gap-2 rounded-xl" onClick={handleOpenDialog}>
                   <Icon name="Plus" size={18} />
                   Создать событие
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl">
                 <DialogHeader>
-                  <DialogTitle>Новое событие</DialogTitle>
+                  <DialogTitle>{editingEvent ? 'Редактировать событие' : 'Новое событие'}</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                   <div className="space-y-2">
                     <Label htmlFor="title">Название события</Label>
-                    <Input id="title" placeholder="Введите название" />
+                    <Input 
+                      id="title" 
+                      placeholder="Введите название" 
+                      value={formData.title}
+                      onChange={(e) => setFormData({...formData, title: e.target.value})}
+                    />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="type">Тип события</Label>
-                      <Select>
+                      <Select value={formData.type} onValueChange={(value) => setFormData({...formData, type: value as EventType})}>
                         <SelectTrigger>
                           <SelectValue placeholder="Выберите тип" />
                         </SelectTrigger>
@@ -167,33 +259,51 @@ const Index = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="time">Время</Label>
-                      <Input id="time" type="time" />
+                      <Input 
+                        id="time" 
+                        type="time" 
+                        value={formData.time}
+                        onChange={(e) => setFormData({...formData, time: e.target.value})}
+                      />
                     </div>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="location">Место проведения</Label>
-                    <Input id="location" placeholder="Где будет событие?" />
+                    <Input 
+                      id="location" 
+                      placeholder="Где будет событие?" 
+                      value={formData.location}
+                      onChange={(e) => setFormData({...formData, location: e.target.value})}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="description">Описание</Label>
-                    <Textarea id="description" placeholder="Добавьте детали..." rows={3} />
+                    <Textarea 
+                      id="description" 
+                      placeholder="Добавьте детали..." 
+                      rows={3}
+                      value={formData.description}
+                      onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="notification">Напомнить за</Label>
-                    <Select defaultValue="30min">
+                    <Select value={formData.notification} onValueChange={(value) => setFormData({...formData, notification: value})}>
                       <SelectTrigger>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="15min">15 минут</SelectItem>
-                        <SelectItem value="30min">30 минут</SelectItem>
-                        <SelectItem value="1hour">1 час</SelectItem>
-                        <SelectItem value="2hours">2 часа</SelectItem>
-                        <SelectItem value="1day">1 день</SelectItem>
+                        <SelectItem value="15 минут">15 минут</SelectItem>
+                        <SelectItem value="30 минут">30 минут</SelectItem>
+                        <SelectItem value="1 час">1 час</SelectItem>
+                        <SelectItem value="2 часа">2 часа</SelectItem>
+                        <SelectItem value="1 день">1 день</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <Button onClick={handleCreateEvent} className="w-full">Создать</Button>
+                  <Button onClick={handleCreateEvent} className="w-full">
+                    {editingEvent ? 'Сохранить изменения' : 'Создать'}
+                  </Button>
                 </div>
               </DialogContent>
             </Dialog>
@@ -242,7 +352,7 @@ const Index = () => {
               </Card>
 
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-3">
                   <h2 className="text-2xl font-semibold">
                     {selectedDate ? selectedDate.toLocaleDateString('ru-RU', { 
                       day: 'numeric', 
@@ -250,9 +360,22 @@ const Index = () => {
                       year: 'numeric' 
                     }) : 'Все события'}
                   </h2>
-                  <Badge variant="secondary" className="px-3 py-1">
-                    {filteredEvents.length} {filteredEvents.length === 1 ? 'событие' : 'событий'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <Select value={filterType} onValueChange={(value) => setFilterType(value as EventType | 'all')}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Все типы</SelectItem>
+                        <SelectItem value="meeting">Встречи</SelectItem>
+                        <SelectItem value="party">Вечеринки</SelectItem>
+                        <SelectItem value="business">Деловые</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Badge variant="secondary" className="px-3 py-1">
+                      {filteredEvents.length} {filteredEvents.length === 1 ? 'событие' : 'событий'}
+                    </Badge>
+                  </div>
                 </div>
 
                 {filteredEvents.length === 0 ? (
@@ -276,9 +399,31 @@ const Index = () => {
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start justify-between gap-2 mb-2">
                               <h3 className="font-semibold text-lg">{event.title}</h3>
-                              <Badge variant="outline" className="flex-shrink-0">
-                                {event.time}
-                              </Badge>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <Badge variant="outline">
+                                  {event.time}
+                                </Badge>
+                                <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                      <Icon name="MoreVertical" size={16} />
+                                    </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                    <DropdownMenuItem onClick={() => handleEditEvent(event)}>
+                                      <Icon name="Pencil" size={16} className="mr-2" />
+                                      Редактировать
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                      onClick={() => setDeletingEventId(event.id)}
+                                      className="text-destructive focus:text-destructive"
+                                    >
+                                      <Icon name="Trash2" size={16} className="mr-2" />
+                                      Удалить
+                                    </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                                </DropdownMenu>
+                              </div>
                             </div>
                             <div className="space-y-1 text-sm text-muted-foreground">
                               <div className="flex items-center gap-2">
@@ -460,6 +605,26 @@ const Index = () => {
           </TabsContent>
         </Tabs>
       </main>
+
+      <AlertDialog open={!!deletingEventId} onOpenChange={() => setDeletingEventId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Удалить событие?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие нельзя отменить. Событие будет удалено из календаря навсегда.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deletingEventId && handleDeleteEvent(deletingEventId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Удалить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

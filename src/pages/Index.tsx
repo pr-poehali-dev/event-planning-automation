@@ -216,7 +216,7 @@ const Index = () => {
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-purple-600 flex items-center justify-center">
                 <Icon name="Calendar" className="text-white" size={24} />
               </div>
-              <h1 className="text-2xl font-semibold text-foreground">EventPlanner</h1>
+              <h1 className="text-2xl font-semibold text-foreground">SosiskiPlanner</h1>
             </div>
             <EventDialog
               isOpen={isDialogOpen}
@@ -365,7 +365,7 @@ const Index = () => {
                     <Icon name="HelpCircle" size={32} className="text-primary" />
                   </div>
                   <h2 className="text-2xl font-semibold mb-2">Помощь</h2>
-                  <p className="text-muted-foreground">Как использовать EventPlanner</p>
+                  <p className="text-muted-foreground">Как использовать SosiskiPlanner</p>
                 </div>
 
                 <div className="space-y-6">

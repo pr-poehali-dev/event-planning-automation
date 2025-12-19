@@ -49,7 +49,7 @@ const EventsTabContent = ({
       <Card className="p-4 h-fit">
         <h3 className="font-semibold mb-4 flex items-center gap-2">
           <Icon name="Calendar" size={18} />
-          Выберите дату
+          Выбери сосиску
         </h3>
         <Calendar
           mode="single"

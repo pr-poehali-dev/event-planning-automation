@@ -1,18 +1,14 @@
 import { useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import Icon from '@/components/ui/icon';
 import { useToast } from '@/hooks/use-toast';
+import EventDialog from '@/components/EventDialog';
+import EventsTabContent from '@/components/EventsTabContent';
 
 type EventType = 'meeting' | 'party' | 'business';
 
@@ -222,91 +218,15 @@ const Index = () => {
               </div>
               <h1 className="text-2xl font-semibold text-foreground">EventPlanner</h1>
             </div>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="gap-2 rounded-xl" onClick={handleOpenDialog}>
-                  <Icon name="Plus" size={18} />
-                  Создать событие
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>{editingEvent ? 'Редактировать событие' : 'Новое событие'}</DialogTitle>
-                </DialogHeader>
-                <div className="space-y-4 py-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="title">Название события</Label>
-                    <Input 
-                      id="title" 
-                      placeholder="Введите название" 
-                      value={formData.title}
-                      onChange={(e) => setFormData({...formData, title: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="type">Тип события</Label>
-                      <Select value={formData.type} onValueChange={(value) => setFormData({...formData, type: value as EventType})}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Выберите тип" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="meeting">Встреча</SelectItem>
-                          <SelectItem value="party">Вечеринка</SelectItem>
-                          <SelectItem value="business">Деловая встреча</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="time">Время</Label>
-                      <Input 
-                        id="time" 
-                        type="time" 
-                        value={formData.time}
-                        onChange={(e) => setFormData({...formData, time: e.target.value})}
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Место проведения</Label>
-                    <Input 
-                      id="location" 
-                      placeholder="Где будет событие?" 
-                      value={formData.location}
-                      onChange={(e) => setFormData({...formData, location: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="description">Описание</Label>
-                    <Textarea 
-                      id="description" 
-                      placeholder="Добавьте детали..." 
-                      rows={3}
-                      value={formData.description}
-                      onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="notification">Напомнить за</Label>
-                    <Select value={formData.notification} onValueChange={(value) => setFormData({...formData, notification: value})}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="15 минут">15 минут</SelectItem>
-                        <SelectItem value="30 минут">30 минут</SelectItem>
-                        <SelectItem value="1 час">1 час</SelectItem>
-                        <SelectItem value="2 часа">2 часа</SelectItem>
-                        <SelectItem value="1 день">1 день</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button onClick={handleCreateEvent} className="w-full">
-                    {editingEvent ? 'Сохранить изменения' : 'Создать'}
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+            <EventDialog
+              isOpen={isDialogOpen}
+              onOpenChange={setIsDialogOpen}
+              editingEvent={editingEvent}
+              formData={formData}
+              setFormData={setFormData}
+              onSubmit={handleCreateEvent}
+              onOpenDialog={handleOpenDialog}
+            />
           </div>
         </div>
       </header>
@@ -337,116 +257,18 @@ const Index = () => {
           </TabsList>
 
           <TabsContent value="events" className="space-y-6">
-            <div className="grid md:grid-cols-[300px_1fr] gap-6">
-              <Card className="p-4 h-fit">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Icon name="Calendar" size={18} />
-                  Выберите дату
-                </h3>
-                <Calendar
-                  mode="single"
-                  selected={selectedDate}
-                  onSelect={setSelectedDate}
-                  className="rounded-md"
-                />
-              </Card>
-
-              <div className="space-y-4">
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <h2 className="text-2xl font-semibold">
-                    {selectedDate ? selectedDate.toLocaleDateString('ru-RU', { 
-                      day: 'numeric', 
-                      month: 'long',
-                      year: 'numeric' 
-                    }) : 'Все события'}
-                  </h2>
-                  <div className="flex items-center gap-2">
-                    <Select value={filterType} onValueChange={(value) => setFilterType(value as EventType | 'all')}>
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Все типы</SelectItem>
-                        <SelectItem value="meeting">Встречи</SelectItem>
-                        <SelectItem value="party">Вечеринки</SelectItem>
-                        <SelectItem value="business">Деловые</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <Badge variant="secondary" className="px-3 py-1">
-                      {filteredEvents.length} {filteredEvents.length === 1 ? 'событие' : 'событий'}
-                    </Badge>
-                  </div>
-                </div>
-
-                {filteredEvents.length === 0 ? (
-                  <Card className="p-12 text-center">
-                    <Icon name="CalendarX2" size={48} className="mx-auto mb-4 text-muted-foreground" />
-                    <h3 className="text-lg font-semibold mb-2">Нет событий</h3>
-                    <p className="text-muted-foreground mb-4">На эту дату пока не запланировано событий</p>
-                    <Button onClick={() => setIsDialogOpen(true)}>
-                      <Icon name="Plus" size={18} className="mr-2" />
-                      Создать событие
-                    </Button>
-                  </Card>
-                ) : (
-                  <div className="space-y-3">
-                    {filteredEvents.map(event => (
-                      <Card key={event.id} className="p-5 hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-4">
-                          <div className={`w-12 h-12 rounded-xl ${getEventTypeColor(event.type)} flex items-center justify-center flex-shrink-0`}>
-                            <Icon name={getEventTypeIcon(event.type)} size={24} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-start justify-between gap-2 mb-2">
-                              <h3 className="font-semibold text-lg">{event.title}</h3>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                <Badge variant="outline">
-                                  {event.time}
-                                </Badge>
-                                <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                      <Icon name="MoreVertical" size={16} />
-                                    </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                    <DropdownMenuItem onClick={() => handleEditEvent(event)}>
-                                      <Icon name="Pencil" size={16} className="mr-2" />
-                                      Редактировать
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                      onClick={() => setDeletingEventId(event.id)}
-                                      className="text-destructive focus:text-destructive"
-                                    >
-                                      <Icon name="Trash2" size={16} className="mr-2" />
-                                      Удалить
-                                    </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                                </DropdownMenu>
-                              </div>
-                            </div>
-                            <div className="space-y-1 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-2">
-                                <Icon name="MapPin" size={14} />
-                                <span>{event.location}</span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Icon name="FileText" size={14} />
-                                <span>{event.description}</span>
-                              </div>
-                              <div className="flex items-center gap-2 text-primary">
-                                <Icon name="Bell" size={14} />
-                                <span>Напомнить за {event.notification}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+            <EventsTabContent
+              selectedDate={selectedDate}
+              onSelectDate={setSelectedDate}
+              filteredEvents={filteredEvents}
+              filterType={filterType}
+              setFilterType={setFilterType}
+              onEditEvent={handleEditEvent}
+              onDeleteEvent={setDeletingEventId}
+              onOpenDialog={handleOpenDialog}
+              getEventTypeColor={getEventTypeColor}
+              getEventTypeIcon={getEventTypeIcon}
+            />
           </TabsContent>
 
           <TabsContent value="calendar" className="space-y-6">
@@ -492,7 +314,7 @@ const Index = () => {
                       <h3 className="font-semibold text-lg mb-2">{template.name}</h3>
                       <p className="text-sm text-muted-foreground">{template.description}</p>
                     </div>
-                    <Button variant="outline" className="w-full" onClick={() => setIsDialogOpen(true)}>
+                    <Button variant="outline" className="w-full" onClick={handleOpenDialog}>
                       Использовать
                     </Button>
                   </div>
